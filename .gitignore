@@ -1,1 +1,6 @@
 .direnv/
+.DS_STORE
+zig-cache/
+.zig-cache/
+zig-out/
+zig-pkg/
