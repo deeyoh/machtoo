@@ -20,7 +20,10 @@
     ];
 
     forAllPlatforms = f: nixpkgs.lib.genAttrs platforms (
-      system: f nixpkgs.legacyPackages.${system}
+      system: f (import nixpkgs {
+        inherit system;
+        overlays = [ zig.overlays.default ];
+      })
     );
   in
   {
@@ -28,7 +31,12 @@
       default = pkgs.mkShell {
         packages = with pkgs; [
           git
-          zig.packages.${pkgs.stdenv.hostPlatform.system}.master
+
+          nixd
+          nixfmt
+
+          zls
+          zigpkgs."0.17.0"
         ];
       };
     });
