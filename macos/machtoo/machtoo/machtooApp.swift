@@ -14,7 +14,7 @@ struct machtooApp: App {
     var appDelegate
     
     var body: some Scene {
-        Settings¡ {
+        Settings {
             EmptyView()
         }
     }

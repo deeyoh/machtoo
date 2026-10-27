@@ -1,4 +1,7 @@
 const std = @import("std");
+const MachtooLib = @import("build/MachtooLib.zig");
+const LipoStep = @import("build/LipoStep.zig");
+const XCFrameworkStep = @import("build/XCFrameworkStep.zig");
 
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
@@ -151,4 +154,44 @@ pub fn build(b: *std.Build) void {
     //
     // Lastly, the Zig build system is relatively simple and self-contained,
     // and reading its source code will allow you to master it.
+    
+    //@NOTE: === STATIC LIBRARY ===
+    const arm = MachtooLib.initStatic(b, .{
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .aarch64,
+            .os_tag = .macos,
+        }),
+        .optimize = optimize
+    });
+
+    const intel = MachtooLib.initStatic(b, .{
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .x86_64,
+            .os_tag = .macos,
+        }),
+        .optimize = optimize
+    });
+
+    const universal = LipoStep.create(b, .{
+        .name = "machtoo",
+        .out_name = "libmachtoo.a",
+        .input_a = arm.lib.getEmittedBin(),
+        .input_b = intel.lib.getEmittedBin(),
+    });
+
+    const install = b.addInstallFile(
+        universal.output,
+        "lib/libmachtoo.a",
+    );
+
+    b.getInstallStep().dependOn(&install.step);
+
+    const xcframework = XCFrameworkStep.create(b, .{
+        .name = "MachtooKit",
+        .out_path = "macos/MachtooKit.xcframework",
+        .library = universal.output,
+        .headers = b.path("include"),
+    });
+
+    b.default_step.dependOn(xcframework.step);
 }

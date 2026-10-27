@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MachtooKit
 
 struct MainView: View {
     @State private var search = ""
@@ -20,7 +21,7 @@ struct MainView: View {
             
             Spacer()
             
-            Text("My commands")
+            Text("Result: \(machtoo_add(20, 22))")
                 .font(.title)
             
             Spacer()
