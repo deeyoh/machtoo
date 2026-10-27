@@ -1,0 +1,5 @@
+machtoo.xcodeproj/
+build/
+/*.xcframework
+buildServer.json
+xcuserdata/
