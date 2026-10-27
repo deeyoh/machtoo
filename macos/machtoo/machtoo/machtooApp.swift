@@ -21,6 +21,10 @@ struct machtooApp: App {
 }
 
 
+final class SearchPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: NSPanel?
 
@@ -33,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showPanel() {
         let content = MainView()
 
-        let panel = NSPanel(
+        let panel = SearchPanel(
             contentRect: NSRect(
                 x: 0,
                 y: 0,
@@ -64,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
 
         panel.center()
-        panel.orderFrontRegardless()
+        panel.makeKeyAndOrderFront(nil)
 
         self.panel = panel
     }
