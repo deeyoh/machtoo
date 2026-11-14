@@ -6,6 +6,7 @@ lib: *std.Build.Step.Compile,
 pub const Options = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    zig_deps: []const []const u8,
 };
 
 pub fn initStatic(
@@ -22,6 +23,15 @@ pub fn initStatic(
             .link_libc = true,
         })
     });
+
+    for (options.zig_deps) |name| {
+        const dep = b.dependency(name, .{
+            .target = options.target,
+            .optimize = options.optimize,
+        });
+        lib.root_module.addImport(name, dep.module(name));
+    }
+
 
     return .{ .lib = lib };
 }

@@ -55,12 +55,17 @@ pub fn build(b: *std.Build) void {
     // test_step.dependOn(&run_exe_tests.step);
 
     //@NOTE: === STATIC LIBRARY ===
+    const zig_dep_names = [_][]const u8{
+        "toml",
+    };
+
     const arm = MachtooLib.initStatic(b, .{
         .target = b.resolveTargetQuery(.{
             .cpu_arch = .aarch64,
             .os_tag = .macos,
         }),
-        .optimize = optimize
+        .optimize = optimize,
+        .zig_deps = &zig_dep_names,
     });
 
     const intel = MachtooLib.initStatic(b, .{
@@ -68,7 +73,8 @@ pub fn build(b: *std.Build) void {
             .cpu_arch = .x86_64,
             .os_tag = .macos,
         }),
-        .optimize = optimize
+        .optimize = optimize,
+        .zig_deps = &zig_dep_names,
     });
 
     const universal = LipoStep.create(b, .{
