@@ -3,7 +3,16 @@ export fn machtoo_add(a: i32, b: i32) i32 {
 }
 
 export fn machtoo_app_create() ?*MachtooApp {
-    const api_app_ptr = ApiApp.create() catch return null;
+    const api_app_ptr = ApiApp.create() catch |err| {
+        Logger.logAt(
+            .err,
+            .api,
+            @src(),
+            "machtoo_app_created failed: {s}",
+            .{@errorName(err)},
+        );
+        return null;
+    };
     const public_app_ptr: *MachtooApp = @ptrCast(api_app_ptr);
     return public_app_ptr;
 }
@@ -16,6 +25,12 @@ export fn machtoo_app_destroy(handle: ?*MachtooApp) void {
 
 const std = @import("std");
 const ApiApp = @import("App.zig").ApiApp;
+const Logger = @import("Logger.zig");
+
+pub const std_options: std.Options = .{
+    .logFn = @import("Logger.zig").logFn,
+    .log_level = .debug,
+};
 
 /// Public handle type that matches the MachtooApp struct
 /// in the header file. The internal fields are intentionally
