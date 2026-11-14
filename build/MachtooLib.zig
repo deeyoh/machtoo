@@ -19,6 +19,7 @@ pub fn initStatic(
             .root_source_file = b.path("src/api.zig"),
             .target = options.target,
             .optimize = options.optimize,
+            .link_libc = true,
         })
     });
 

@@ -27,11 +27,29 @@ final class SearchPanel: NSPanel {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: NSPanel?
+    private var core: MachtooCore?
 
     func applicationDidFinishLaunching(
         _ notification: Notification
     ) {
-        showPanel()
+        do {
+            print("HERE")
+            core = try MachtooCore()
+            showPanel()
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Unable to start Machtoo"
+            alert.informativeText =
+                "The application's Zig core app could not be created."
+            alert.alertStyle = .critical
+            alert.runModal()
+            
+            NSApplication.shared.terminate(nil)
+        }
+    }
+    
+    func applicationWillTerminate(_ notification: Notification) {
+        core = nil
     }
 
     func showPanel() {

@@ -56,7 +56,13 @@ pub const ApiApp = struct {
     }
 
     pub fn destroy(self: *ApiApp) void {
-        self.app.destroy();
+        std.log.err(
+            "ApiApp.destroy entered; safe allocator enabled: {}",
+            .{use_safe_allocator},
+        );
+        //@TODO: Uncomment purposeful memory leak (used to test
+        //logging to Xcoode stderr with SafeAllocator
+        // self.app.destroy();
 
         if (use_safe_allocator) {
             _ = self.safe_allocator.deinit();

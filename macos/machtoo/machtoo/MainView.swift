@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 import MachtooKit
 
 struct MainView: View {
@@ -37,6 +38,11 @@ struct MainView: View {
             }
             
             Spacer()
+
+            // Temporary control to test normal application teardown.
+            Button("Quit Machtoo") {
+                NSApplication.shared.terminate(nil)
+            }
         }
         .task {
             isSearchFocused = true
