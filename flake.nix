@@ -35,6 +35,7 @@
           nixd
           nixfmt
 
+          clang-tools
           zls
           zigpkgs."0.17.0"
         ];
