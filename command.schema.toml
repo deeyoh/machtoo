@@ -1,0 +1,25 @@
+# === EXAMPLE COMMAND SCHEMA ===
+
+[metadata]
+schema_version = 1
+id = "jj.rebase"
+name = "JJ rebase"
+description = "Rebase a JJ revision"
+
+category = ["Development", "Git", "Jujutsu"]
+tags = ["git", "rebase"]
+aliases []
+
+notes = """
+## When to use
+
+Use when you want to rebase a specific revision. Common
+flags via usage are the following:
+
+- `jj rebase -s <REV> -o <REV>`
+- `jj rebase -s <REV> -A <REV>` (this will insert source after)
+"""
+
+[action]
+context = "shell"
+usage = "jj rebase"
