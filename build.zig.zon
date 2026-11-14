@@ -36,6 +36,11 @@
             .url = "git+https://github.com/sam701/zig-toml?ref=zig-0.17#4a13e49ce7d19ac2df8b87962d9f23c0f5dd5bdd",
             .hash = "toml-0.3.0-bV14BRmkAQDSILPPyXc31aAXPtJa1Uh8Frug3i6InAUc",
         },
+        .zig_gobject = .{
+            .url = "https://github.com/ianprime0509/zig-gobject/archive/410b1d5bca8a0b494aeb1edaad695ac86ac40d54.tar.gz",
+            .hash = "gobject_codegen-0.3.2-B33qze9dBwADTdlnHCsWLNyZvSAWilRL2914S_f8PjJp",
+            .lazy = true
+        },
     },
     .paths = .{
         "build.zig",

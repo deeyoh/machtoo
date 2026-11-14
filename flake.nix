@@ -29,6 +29,10 @@
   {
     devShells = forAllPlatforms (pkgs: {
       default = pkgs.mkShell {
+        nativeBuildInpus = with pkgs; [
+          pkg-config
+        ];
+
         packages = with pkgs; [
           git
 
@@ -38,6 +42,8 @@
           clang-tools
           zls
           zigpkgs."0.17.0"
+        ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+          gtk4
         ];
       };
     });

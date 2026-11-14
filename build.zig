@@ -59,6 +59,11 @@ pub fn build(b: *std.Build) void {
         "toml",
     };
 
+    //need to add zig-gobject, but it is a Linux only dep.
+    //The Linux GTK app does not use the static library.
+    //It instead compiles the shared Zig core directly
+    //into the executable and calls it from Zig (direct Zig)
+
     const arm = MachtooLib.initStatic(b, .{
         .target = b.resolveTargetQuery(.{
             .cpu_arch = .aarch64,
