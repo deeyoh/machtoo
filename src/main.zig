@@ -1,7 +1,14 @@
 const std = @import("std");
 const Io = std.Io;
+const App = @import("App.zig");
+const Logger = @import("Logger.zig");
 const gtk = @import("gtk");
 const gio = @import("gio");
+
+pub const std_options: std.Options = .{
+    .logFn = @import("Logger.zig").logFn,
+    .log_level = .debug,
+};
 
 pub fn main(init: std.process.Init) !void {
     const gtk_app = gtk.Application.new("com.deeyoh.machtoo", .{});
@@ -15,7 +22,24 @@ pub fn main(init: std.process.Init) !void {
         .{},
     );
 
-    _ = init;
+    const alloc = init.gpa;
+    const io = init.io;
+    const environ_map = init.environ_map;
+
+    const app_ptr = try App.create(alloc, io, environ_map);
+    defer app_ptr.destroy();
+
+    try Logger.init(io, environ_map, alloc);
+    defer Logger.deinit();
+
+    Logger.logAt(
+        .debug,
+        .main,
+        @src(),
+        "successfully set up app and logger",
+        .{},
+    );
+
     _ = gtk_app.as(gio.Application).run(0, null);
 }
 
