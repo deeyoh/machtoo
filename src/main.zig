@@ -29,17 +29,6 @@ pub fn main(init: std.process.Init) !void {
     const app_ptr = try App.create(alloc, io, environ_map);
     defer app_ptr.destroy();
 
-    try Logger.init(io, environ_map, alloc);
-    defer Logger.deinit();
-
-    Logger.logAt(
-        .debug,
-        .main,
-        @src(),
-        "successfully set up app and logger",
-        .{},
-    );
-
     _ = gtk_app.as(gio.Application).run(0, null);
 }
 
