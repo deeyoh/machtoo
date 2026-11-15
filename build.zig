@@ -1,44 +1,31 @@
 const std = @import("std");
-const MachtooLib = @import("build/MachtooLib.zig");
-const LipoStep = @import("build/LipoStep.zig");
-const XCFrameworkStep = @import("build/XCFrameworkStep.zig");
+const buildpkg = @import("src/build/buildpkg.zig");
+
+const MachtooLib = buildpkg.MachtooLib;
+const LipoStep = buildpkg.LipoStep;
+const XCFrameworkStep = buildpkg.XCFrameworkStep;
 
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(.{});
-    const optimize = b.standardOptimizeOption(.{});
+    // const target = b.standardTargetOptions(.{});
+    // const optimize = b.standardOptimizeOption(.{});
+    // const exe = b.addExecutable(.{
+    //     .name = "machtoo",
+    //     .root_module = b.createModule(.{
+    //         .root_source_file = b.path("src/main.zig"),
+    //         .target = target,
+    //         .optimize = optimize,
+    //         // .imports = &.{
+    //         //     .{ .name = "machtoo", .module = mod },
+    //         // },
+    //     }),
+    // });
+    // b.installArtifact(exe);
 
-    const mod = b.addModule("machtoo", .{
-        // The root source file is the "entry point" of this module. Users of
-        // this module will only be able to access public declarations contained
-        // in this file, which means that if you have declarations that you
-        // intend to expose to consumers that were defined in other files part
-        // of this module, you will have to make sure to re-export them from
-        // the root file.
-        .root_source_file = b.path("src/root.zig"),
-        // Later on we'll use this module as the root module of a test executable
-        // which requires us to specify a target.
-        .target = target,
-    });
-
-    const exe = b.addExecutable(.{
-        .name = "machtoo",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "machtoo", .module = mod },
-            },
-        }),
-    });
-
-    b.installArtifact(exe);
-
-    const run_step = b.step("run", "Run the app");
-    const run_cmd = b.addRunArtifact(exe);
-    run_step.dependOn(&run_cmd.step);
-    run_cmd.step.dependOn(b.getInstallStep());
-    run_cmd.addPassthruArgs();
+    // const run_step = b.step("run", "Run the app");
+    // const run_cmd = b.addRunArtifact(exe);
+    // run_step.dependOn(&run_cmd.step);
+    // run_cmd.step.dependOn(b.getInstallStep());
+    // run_cmd.addPassthruArgs();
 
     // const mod_tests = b.addTest(.{
     //     .root_module = mod,
@@ -54,8 +41,12 @@ pub fn build(b: *std.Build) void {
     // test_step.dependOn(&run_mod_tests.step);
     // test_step.dependOn(&run_exe_tests.step);
 
+    const config = buildpkg.Config.init(b);
+    // if Linux, need to create executable, otherwise, static library
+
+
     //@NOTE: === STATIC LIBRARY ===
-    const zig_dep_names = [_][]const u8{
+    const shared_deps = [_][]const u8{
         "toml",
     };
 
@@ -69,8 +60,8 @@ pub fn build(b: *std.Build) void {
             .cpu_arch = .aarch64,
             .os_tag = .macos,
         }),
-        .optimize = optimize,
-        .zig_deps = &zig_dep_names,
+        .optimize = config.optimize,
+        .shared_zig_deps = &shared_deps,
     });
 
     const intel = MachtooLib.initStatic(b, .{
@@ -78,8 +69,8 @@ pub fn build(b: *std.Build) void {
             .cpu_arch = .x86_64,
             .os_tag = .macos,
         }),
-        .optimize = optimize,
-        .zig_deps = &zig_dep_names,
+        .optimize = config.optimize,
+        .shared_zig_deps = &shared_deps,
     });
 
     const universal = LipoStep.create(b, .{

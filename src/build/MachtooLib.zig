@@ -6,7 +6,7 @@ lib: *std.Build.Step.Compile,
 pub const Options = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    zig_deps: []const []const u8,
+    shared_zig_deps: []const []const u8,
 };
 
 pub fn initStatic(
@@ -24,7 +24,7 @@ pub fn initStatic(
         })
     });
 
-    for (options.zig_deps) |name| {
+    for (options.shared_zig_deps) |name| {
         const dep = b.dependency(name, .{
             .target = options.target,
             .optimize = options.optimize,
