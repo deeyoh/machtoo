@@ -6,21 +6,6 @@ const LipoStep = buildpkg.LipoStep;
 const XCFrameworkStep = buildpkg.XCFrameworkStep;
 
 pub fn build(b: *std.Build) void {
-    // const target = b.standardTargetOptions(.{});
-    // const optimize = b.standardOptimizeOption(.{});
-    // const exe = b.addExecutable(.{
-    //     .name = "machtoo",
-    //     .root_module = b.createModule(.{
-    //         .root_source_file = b.path("src/main.zig"),
-    //         .target = target,
-    //         .optimize = optimize,
-    //         // .imports = &.{
-    //         //     .{ .name = "machtoo", .module = mod },
-    //         // },
-    //     }),
-    // });
-    // b.installArtifact(exe);
-
     // const run_step = b.step("run", "Run the app");
     // const run_cmd = b.addRunArtifact(exe);
     // run_step.dependOn(&run_cmd.step);
@@ -47,7 +32,23 @@ pub fn build(b: *std.Build) void {
 
     switch (config.app_runtime) {
         .gtk => {
-            //create executable
+            std.debug.print("config app runtime determined: {}\n", .{config.app_runtime});
+            const exe = b.addExecutable(.{
+                .name = "machtoo",
+                .root_module = b.createModule(.{
+                    .root_source_file = b.path("src/main.zig"),
+                    .target = config.target,
+                    .optimize = config.optimize,
+                }),
+            });
+
+            b.installArtifact(exe);
+
+            const run_step = b.step("run", "Run the GTK app");
+            const run_cmd = b.addRunArtifact(exe);
+            run_step.dependOn(&run_cmd.step);
+            run_cmd.step.dependOn(b.getInstallStep());
+            run_cmd.addPassthruArgs();
         },
         .none => {
             //@NOTE: === STATIC LIBRARY ===
