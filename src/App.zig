@@ -3,8 +3,15 @@ const App = @This();
 const std = @import("std");
 const builtin = @import("builtin");
 const Logger = @import("Logger.zig");
+const inputpkg = @import("inputpkg.zig");
+const Config = @import("inputpkg.zig").Config;
 
 allocator: std.mem.Allocator,
+state: GlobalState,
+
+pub const GlobalState = struct {
+    config: inputpkg.Config,
+};
 
 pub fn create(
     alloc: std.mem.Allocator,
@@ -17,8 +24,14 @@ pub fn create(
     try Logger.init(io, environ_map, alloc);
     errdefer Logger.deinit();
 
+    var config: Config = .{};
+    try config.load(io, alloc, environ_map);
+
     app_ptr.* = .{
         .allocator = alloc,
+        .state = .{
+            .config = config,
+        },
     };
 
     Logger.logAt(
@@ -77,7 +90,11 @@ pub const ApiApp = struct {
         var environ_map = std.process.Environ.Map.init(allocator);
         defer environ_map.deinit();
 
-        for ([_][:0]const u8{ "HOME", "XDG_STATE_HOME" }) |key| {
+        for ([_][:0]const u8{ 
+            "HOME",
+            "XDG_STATE_HOME",
+            "XDG_CONFIG_HOME",
+        }) |key| {
             if (std.c.getenv(key.ptr)) |value| {
                 try environ_map.put(key, std.mem.span(value));
             }
