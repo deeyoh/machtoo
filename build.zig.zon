@@ -37,17 +37,14 @@
             .hash = "toml-0.3.0-bV14BRmkAQDSILPPyXc31aAXPtJa1Uh8Frug3i6InAUc",
         },
         .zig_gobject = .{
-            .url = "https://github.com/ianprime0509/zig-gobject/archive/410b1d5bca8a0b494aeb1edaad695ac86ac40d54.tar.gz",
-            .hash = "gobject_codegen-0.3.2-B33qze9dBwADTdlnHCsWLNyZvSAWilRL2914S_f8PjJp",
-            .lazy = true
+            .path = "vendor/zig-gobject",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        // For example...
-        //"LICENSE",
-        //"README.md",
+        "vendor",
+        "scripts",
     },
 }

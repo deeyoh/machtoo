@@ -4,3 +4,6 @@ zig-cache/
 .zig-cache/
 zig-out/
 zig-pkg/
+
+# generate bindings as initial step instead
+vendor/

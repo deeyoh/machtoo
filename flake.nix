@@ -42,9 +42,13 @@
         '';
       in {
       default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [
-          pkg-config
-        ];
+        nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux (
+          with pkgs; [
+            pkg-config
+            libxslt
+            gobject-introspection
+          ]
+        );
 
         packages = with pkgs; [
           git
