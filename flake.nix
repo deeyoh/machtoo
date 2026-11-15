@@ -27,9 +27,22 @@
     );
   in
   {
-    devShells = forAllPlatforms (pkgs: {
+    devShells = forAllPlatforms (pkgs: let
+        patchedPkgConfig = pkgs.runCommandLocal "patched-pkg-config" {} ''
+          mkdir -p "$out"
+
+          substitute ${pkgs.graphene.dev}/lib/pkgconfig/graphene-1.0.pc \
+            "$out/graphene-1.0.pc" \
+            --replace-quiet '-mfpmath=sse -msse -msse2' ""
+
+          substitute ${pkgs.glib.dev}/lib/pkgconfig/gmodule-2.0.pc \
+            "$out/gmodule-2.0.pc" \
+            --replace-quiet '-Wl,--export-dynamic' "" \
+            --replace-quiet '-Wl,-export-dynamic' ""
+        '';
+      in {
       default = pkgs.mkShell {
-        nativeBuildInpus = with pkgs; [
+        nativeBuildInputs = with pkgs; [
           pkg-config
         ];
 
@@ -45,6 +58,11 @@
         ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           gtk4
         ];
+
+        shellHook = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+          # Search modified PC files before the originals.
+          export PKG_CONFIG_PATH="${patchedPkgConfig}:''${PKG_CONFIG_PATH:-}"
+        '';
       };
     });
   };
