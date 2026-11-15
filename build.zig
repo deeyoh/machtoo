@@ -42,57 +42,56 @@ pub fn build(b: *std.Build) void {
     // test_step.dependOn(&run_exe_tests.step);
 
     const config = buildpkg.Config.init(b);
-    // if Linux, need to create executable, otherwise, static library
 
+    const shared_zig_deps = [_][]const u8{"toml"};
 
-    //@NOTE: === STATIC LIBRARY ===
-    const shared_deps = [_][]const u8{
-        "toml",
-    };
+    switch (config.app_runtime) {
+        .gtk => {
+            //create executable
+        },
+        .none => {
+            //@NOTE: === STATIC LIBRARY ===
+            std.debug.print("config app runtime determined: {}\n", .{config.app_runtime});
+            const arm = MachtooLib.initStatic(b, .{
+                .target = b.resolveTargetQuery(.{
+                    .cpu_arch = .aarch64,
+                    .os_tag = .macos,
+                }),
+                .optimize = config.optimize,
+                .shared_zig_deps = &shared_zig_deps,
+            });
 
-    //need to add zig-gobject, but it is a Linux only dep.
-    //The Linux GTK app does not use the static library.
-    //It instead compiles the shared Zig core directly
-    //into the executable and calls it from Zig (direct Zig)
+            const intel = MachtooLib.initStatic(b, .{
+                .target = b.resolveTargetQuery(.{
+                    .cpu_arch = .x86_64,
+                    .os_tag = .macos,
+                }),
+                .optimize = config.optimize,
+                .shared_zig_deps = &shared_zig_deps,
+            });
 
-    const arm = MachtooLib.initStatic(b, .{
-        .target = b.resolveTargetQuery(.{
-            .cpu_arch = .aarch64,
-            .os_tag = .macos,
-        }),
-        .optimize = config.optimize,
-        .shared_zig_deps = &shared_deps,
-    });
+            const universal = LipoStep.create(b, .{
+                .name = "machtoo",
+                .out_name = "libmachtoo.a",
+                .input_a = arm.lib.getEmittedBin(),
+                .input_b = intel.lib.getEmittedBin(),
+            });
 
-    const intel = MachtooLib.initStatic(b, .{
-        .target = b.resolveTargetQuery(.{
-            .cpu_arch = .x86_64,
-            .os_tag = .macos,
-        }),
-        .optimize = config.optimize,
-        .shared_zig_deps = &shared_deps,
-    });
+            const install = b.addInstallFile(
+                universal.output,
+                "lib/libmachtoo.a",
+            );
 
-    const universal = LipoStep.create(b, .{
-        .name = "machtoo",
-        .out_name = "libmachtoo.a",
-        .input_a = arm.lib.getEmittedBin(),
-        .input_b = intel.lib.getEmittedBin(),
-    });
+            b.getInstallStep().dependOn(&install.step);
 
-    const install = b.addInstallFile(
-        universal.output,
-        "lib/libmachtoo.a",
-    );
+            const xcframework = XCFrameworkStep.create(b, .{
+                .name = "MachtooKit",
+                .out_path = "macos/MachtooKit.xcframework",
+                .library = universal.output,
+                .headers = b.path("include"),
+            });
 
-    b.getInstallStep().dependOn(&install.step);
-
-    const xcframework = XCFrameworkStep.create(b, .{
-        .name = "MachtooKit",
-        .out_path = "macos/MachtooKit.xcframework",
-        .library = universal.output,
-        .headers = b.path("include"),
-    });
-
-    b.default_step.dependOn(xcframework.step);
+            b.default_step.dependOn(xcframework.step);
+        },
+    }
 }
