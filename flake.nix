@@ -42,7 +42,7 @@
           clang-tools
           zls
           zigpkgs."0.17.0"
-        ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+        ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           gtk4
         ];
       };
