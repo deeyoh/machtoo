@@ -45,13 +45,23 @@ pub fn build(b: *std.Build) void {
             b.installArtifact(exe);
 
             const run_step = b.step("run", "Run the GTK app");
-            const run_cmd = b.addRunArtifact(exe);
+            const run_cmd = if (config.target.result.os.tag == .linux and
+                b.graph.environ_map.get("MACHTOO_DYNAMIC_LINKER") != null)
+                blk: {
+                    const loader = b.graph.environ_map.get("MACHTOO_DYNAMIC_LINKER").?;
+                    const cmd = b.addSystemCommand(&.{loader});
+                    cmd.addArtifactArg(exe);
+                    break :blk cmd;
+                }
+            else
+                b.addRunArtifact(exe);
             run_step.dependOn(&run_cmd.step);
             run_cmd.step.dependOn(b.getInstallStep());
             run_cmd.addPassthruArgs();
 
             const gobject_dep = b.dependency("zig_gobject", .{});
             exe.root_module.addImport("gtk", gobject_dep.module("gtk4"));
+            exe.root_module.addImport("gio", gobject_dep.module("gio2"));
         },
         .none => {
             //@NOTE: === STATIC LIBRARY ===

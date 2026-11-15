@@ -66,6 +66,8 @@
         shellHook = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
           # Search modified PC files before the originals.
           export PKG_CONFIG_PATH="${patchedPkgConfig}:''${PKG_CONFIG_PATH:-}"
+          # Run with the loader matching this shell's GTK dependencies.
+          export MACHTOO_DYNAMIC_LINKER="${pkgs.stdenv.cc.bintools.dynamicLinker}"
         '';
       };
     });
