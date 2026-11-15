@@ -38,6 +38,7 @@
         },
         .zig_gobject = .{
             .path = "vendor/zig-gobject",
+            .lazy = true,
         },
     },
     .paths = .{

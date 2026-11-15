@@ -1,12 +1,12 @@
 const MachtooLib = @This();
 const std = @import("std");
+const AddSharedCore = @import("AddSharedCore.zig");
 
 lib: *std.Build.Step.Compile,
 
 pub const Options = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    shared_zig_deps: []const []const u8,
 };
 
 pub fn initStatic(
@@ -24,14 +24,11 @@ pub fn initStatic(
         })
     });
 
-    for (options.shared_zig_deps) |name| {
-        const dep = b.dependency(name, .{
-            .target = options.target,
-            .optimize = options.optimize,
-        });
-        lib.root_module.addImport(name, dep.module(name));
-    }
-
+    AddSharedCore.init(b, .{
+        .module = lib.root_module,
+        .target = options.target,
+        .optimize = options.optimize,
+    });
 
     return .{ .lib = lib };
 }

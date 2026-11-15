@@ -1,3 +1,0 @@
-A random test file
-Nothing important here
-Hello, World!

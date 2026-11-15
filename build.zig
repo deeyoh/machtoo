@@ -2,6 +2,7 @@ const std = @import("std");
 const buildpkg = @import("src/build/buildpkg.zig");
 
 const MachtooLib = buildpkg.MachtooLib;
+const AddSharedCore = buildpkg.AddSharedCore;
 const LipoStep = buildpkg.LipoStep;
 const XCFrameworkStep = buildpkg.XCFrameworkStep;
 
@@ -28,8 +29,6 @@ pub fn build(b: *std.Build) void {
 
     const config = buildpkg.Config.init(b);
 
-    const shared_zig_deps = [_][]const u8{"toml"};
-
     switch (config.app_runtime) {
         .gtk => {
             std.debug.print("config app runtime determined: {}\n", .{config.app_runtime});
@@ -40,6 +39,12 @@ pub fn build(b: *std.Build) void {
                     .target = config.target,
                     .optimize = config.optimize,
                 }),
+            });
+
+            AddSharedCore.init(b, .{
+                .module = exe.root_module,
+                .target = config.target,
+                .optimize = config.optimize,
             });
 
             b.installArtifact(exe);
@@ -59,20 +64,22 @@ pub fn build(b: *std.Build) void {
             run_cmd.step.dependOn(b.getInstallStep());
             run_cmd.addPassthruArgs();
 
-            const gobject_dep = b.dependency("zig_gobject", .{});
-            exe.root_module.addImport("gtk", gobject_dep.module("gtk4"));
-            exe.root_module.addImport("gio", gobject_dep.module("gio2"));
+            if (b.lazyDependency("zig_gobject", .{})) |gobject_dep| {
+                exe.root_module.addImport("gtk", gobject_dep.module("gtk4"));
+                exe.root_module.addImport("gio", gobject_dep.module("gio2"));
+            }
         },
         .none => {
             //@NOTE: === STATIC LIBRARY ===
             std.debug.print("config app runtime determined: {}\n", .{config.app_runtime});
+
+            // initStatic contains the `AddSharedCore` step
             const arm = MachtooLib.initStatic(b, .{
                 .target = b.resolveTargetQuery(.{
                     .cpu_arch = .aarch64,
                     .os_tag = .macos,
                 }),
                 .optimize = config.optimize,
-                .shared_zig_deps = &shared_zig_deps,
             });
 
             const intel = MachtooLib.initStatic(b, .{
@@ -81,7 +88,6 @@ pub fn build(b: *std.Build) void {
                     .os_tag = .macos,
                 }),
                 .optimize = config.optimize,
-                .shared_zig_deps = &shared_zig_deps,
             });
 
             const universal = LipoStep.create(b, .{
