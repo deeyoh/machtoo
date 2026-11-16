@@ -27,11 +27,6 @@ pub const Storage = struct {
         environ_map: *std.process.Environ.Map,
     ) !void {
         _ = self;
-        //owns its own TOML parser. This is not needed anywhere else
-        //other than the load section
-        var parser = toml.Parser(Command).init(alloc);
-        defer parser.deinit();
-
         const commands_path = try commandsPath(alloc, environ_map);
         defer alloc.free(commands_path);
 
@@ -75,6 +70,102 @@ pub const Storage = struct {
             else => return err,
         };
         defer file.close(io);
+
+        //begin parsing the TOML file
+        //owns its own TOML parser. This is not needed anywhere else
+        //other than the load section
+        var parser = toml.Parser(Command).init(alloc);
+        parser.options.disallow_unknown_fields = true;
+        defer parser.deinit();
+
+        var result = parser.parseFile(io, commands_path) catch |err| {
+            if (parser.error_info) |info| {
+                switch (info) {
+                    .parse => |position| {
+                        Logger.logAt(
+                            .err,
+                            .commands,
+                            @src(),
+                            "TOML parse failed: {s}, line {d}, position {d}",
+                            .{
+                                @errorName(err),
+                                position.line,
+                                position.pos,
+                            },
+                        );
+                    },
+                    .unknown_fields => |unknown| {
+                        for (unknown.keys) |key| {
+                            Logger.logAt(
+                                .err,
+                                .commands,
+                                @src(),
+                                "Unknown TOML field: {s}",
+                                .{key},
+                            );
+                        }
+                    },
+                    else => {
+                        Logger.logAt(
+                            .err,
+                            .commands,
+                            @src(),
+                            "Failed to load commands: {s}",
+                            .{@errorName(err)},
+                        );
+                    },
+                }
+            }
+            return err;
+        };
+        defer result.deinit();
+
+        const config = result.value;
+        const metadata = config.metadata;
+
+        Logger.logAt(
+            .info,
+            .commands,
+            @src(),
+            \\metadata:
+            \\  schema_version: {d}
+            \\  id: {s}
+            \\  name: {s}
+            \\  notes: {s}
+            ,
+            .{
+                metadata.schema_version,
+                metadata.id,
+                metadata.name,
+                metadata.notes,
+            },
+        );
+
+        for (metadata.category) |category| {
+            Logger.logAt(.info, .commands, @src(), "  category: {s}", .{category});
+        }
+
+        for (metadata.tags) |tag| {
+            Logger.logAt(.info, .commands, @src(), "  tag: {s}", .{tag});
+        }
+
+        for (metadata.aliases) |alias| {
+            Logger.logAt(.info, .commands, @src(), "  alias: {s}", .{alias});
+        }
+
+        Logger.logAt(
+            .info,
+            .commands,
+            @src(),
+            \\action:
+            \\  context: {s}
+            \\  usage: {s}
+            ,
+            .{
+                config.action.context,
+                config.action.usage,
+            },
+        );
 
         Logger.logAt(
             .info,

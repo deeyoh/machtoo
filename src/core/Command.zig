@@ -4,6 +4,7 @@ pub const Metadata = struct {
     schema_version: u8,
     id: []const u8,
     name: []const u8,
+    description: []const u8,
     category: []const []const u8,
     tags: []const []const u8,
     aliases: []const []const u8,

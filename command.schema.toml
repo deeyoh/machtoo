@@ -8,7 +8,7 @@ description = "Rebase a JJ revision"
 
 category = ["Development", "Git", "Jujutsu"]
 tags = ["git", "rebase"]
-aliases []
+aliases = []
 
 notes = """
 ## When to use
