@@ -23,8 +23,25 @@ pub fn init(
     });
     options.module.addImport("toml", toml_dep.module("toml"));
 
-    options.module.addAnonymousImport("default_config", .{
-        .root_source_file = b.path("config.machtoo")
-    });
+    const embeddable_defaults = [_]struct {
+        import_alias: []const u8,
+        file_name: []const u8,
+    }{
+        .{
+            .import_alias = "default_config",
+            .file_name = "config.machtoo"
+        },
+        .{
+            .import_alias = "command_schema",
+            .file_name = "command.schema.toml",
+        },
+
+    };
+
+    for (embeddable_defaults) |entry| {
+        options.module.addAnonymousImport(entry.import_alias, .{
+            .root_source_file = b.path(entry.file_name)
+        });
+    }
 }
 

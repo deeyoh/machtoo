@@ -4,13 +4,16 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Logger = @import("Logger.zig");
 const inputpkg = @import("inputpkg.zig");
-const Config = @import("inputpkg.zig").Config;
+
+const Config = inputpkg.Config;
+const commands = inputpkg.commands;
 
 allocator: std.mem.Allocator,
 state: GlobalState,
 
 pub const GlobalState = struct {
     config: inputpkg.Config,
+    commands: commands.Storage,
 };
 
 pub fn create(
@@ -31,8 +34,16 @@ pub fn create(
         .allocator = alloc,
         .state = .{
             .config = config,
+            .commands = .{},
         },
     };
+    errdefer app_ptr.state.commands.deinit(alloc);
+
+    try app_ptr.state.commands.load(
+        io,
+        alloc,
+        environ_map,
+    );
 
     Logger.logAt(
         .debug,
@@ -48,6 +59,8 @@ pub fn create(
 pub fn destroy(self: *App) void {
     Logger.deinit();
     self.allocator.destroy(self);
+
+    //@TODO: deinit commands
 }
 
 /// Wrapper struct of `App` for C API. Bootstraps a safe allocator backed
