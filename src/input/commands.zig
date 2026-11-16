@@ -10,10 +10,18 @@ pub const Storage = struct {
     const Map = std.array_hash_map.String(Command);
 
     commands: Map = .{},
+    arena: std.heap.ArenaAllocator,
 
     pub fn deinit(self: *Storage, alloc: std.mem.Allocator) void {
         self.commands.deinit(alloc);
-        self.* = .{};
+        self.arena.deinit();
+        self.* = undefined;
+    }
+
+    pub fn init(backing_alloc: std.mem.Allocator) Storage {
+        return .{
+            .arena = std.heap.ArenaAllocator.init(backing_alloc)
+        };
     }
 
     /// Reads defined command files and inserts them into the
@@ -26,7 +34,6 @@ pub const Storage = struct {
         alloc: std.mem.Allocator,
         environ_map: *std.process.Environ.Map,
     ) !void {
-        _ = self;
         const commands_path = try commandsPath(alloc, environ_map);
         defer alloc.free(commands_path);
 
@@ -174,6 +181,43 @@ pub const Storage = struct {
             "loaded commands",
             .{}
         );
+
+        const owned_command = try self.cloneCommand(config);
+        try self.commands.put(alloc, owned_command.metadata.id, owned_command);
+    }
+
+    fn cloneCommand(self: *Storage, source: Command) !Command {
+        const alloc = self.arena.allocator();
+
+        return .{
+            .metadata = .{
+                .schema_version = source.metadata.schema_version,
+                .id = try alloc.dupe(u8, source.metadata.id),
+                .name = try alloc.dupe(u8, source.metadata.name),
+                .description = try alloc.dupe(u8, source.metadata.description),
+                .category = try cloneStrings(alloc, source.metadata.category),
+                .tags = try cloneStrings(alloc, source.metadata.tags),
+                .aliases = try cloneStrings(alloc, source.metadata.aliases),
+                .notes = try alloc.dupe(u8, source.metadata.notes),
+            },
+            .action = .{
+                .context = try alloc.dupe(u8, source.action.context),
+                .usage = try alloc.dupe(u8, source.action.usage),
+            },
+        };
+    }
+
+    fn cloneStrings(
+        alloc: std.mem.Allocator,
+        strings: []const []const u8,
+    ) ![]const []const u8 {
+        const copies = try alloc.alloc([]const u8, strings.len);
+
+        for (strings, 0..) |string, i| {
+            copies[i] = try alloc.dupe(u8, string);
+        }
+
+        return copies;
     }
 };
 
@@ -187,3 +231,4 @@ fn commandsPath(
 
     return std.Io.Dir.path.join(alloc, &.{ config_parent_dir, "commands.toml" });
 }
+

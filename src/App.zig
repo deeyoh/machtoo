@@ -34,7 +34,7 @@ pub fn create(
         .allocator = alloc,
         .state = .{
             .config = config,
-            .commands = .{},
+            .commands = commands.Storage.init(alloc),
         },
     };
     errdefer app_ptr.state.commands.deinit(alloc);
@@ -57,9 +57,8 @@ pub fn create(
 }
 
 pub fn destroy(self: *App) void {
-    Logger.deinit();
+    self.state.commands.deinit(self.allocator);
     self.allocator.destroy(self);
-
     //@TODO: deinit commands
 }
 
@@ -132,11 +131,15 @@ pub const ApiApp = struct {
         );
         self.app.destroy();
 
-        self.threaded.deinit();
-
         if (use_safe_allocator) {
             _ = self.safe_allocator.deinit();
         }
+
+        //Logger's deinit placed here instead of within App's destroy
+        //to ensure leaks are logged in specified file rather than stderr
+        Logger.deinit();
+
+        self.threaded.deinit();
 
         std.heap.c_allocator.destroy(self);
     }
