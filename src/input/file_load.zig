@@ -31,3 +31,38 @@ pub fn defaultConfigHome(
 
     return path.join(alloc, &.{ home, ".config", "machtoo" });
 }
+
+/// Recursively walks the given directory, searching for the requested file name + type pattern.
+pub fn scanDirectory(
+    io: std.Io,
+    alloc: std.mem.Allocator,
+    dir_path: []const u8,
+    file_suffix: []const u8,
+) ![]const []const u8 {
+    var dir = try std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true });
+    defer dir.close(io);
+
+    var walker = try dir.walk(alloc);
+    defer walker.deinit();
+
+    var matched_files: std.ArrayList([]const u8) = .empty;
+    errdefer {
+        for (matched_files.items) |name| alloc.free(name);
+        matched_files.deinit(alloc);
+    }
+
+    while (try walker.next(io)) |entry| {
+        if (entry.kind != .file) continue;
+
+        if (std.mem.endsWith(u8, entry.basename, file_suffix) and 
+            entry.basename.len > file_suffix.len) 
+        {
+            // const file_path = try alloc.dupe(u8, entry.path);
+            const file_path = try path.join(alloc, &.{ dir_path, entry.path });
+            errdefer alloc.free(file_path);
+            try matched_files.append(alloc, file_path);
+        }
+    }
+
+    return try matched_files.toOwnedSlice(alloc);
+}

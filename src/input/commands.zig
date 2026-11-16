@@ -6,6 +6,8 @@ const Logger = @import("../Logger.zig");
 const file_load = @import("file_load.zig");
 const inputpkg = @import("../inputpkg.zig");
 
+const JJ_REBASE_COMMAND_FILE_NAME: []const u8 = "jj-rebase-command.toml";
+
 pub const Storage = struct {
     const Map = std.array_hash_map.String(Command);
 
@@ -18,65 +20,59 @@ pub const Storage = struct {
         self.* = undefined;
     }
 
+
     pub fn init(backing_alloc: std.mem.Allocator) Storage {
         return .{
             .arena = std.heap.ArenaAllocator.init(backing_alloc)
         };
     }
 
-    /// Reads defined command files and inserts them into the
-    /// storage's array hash map, using its `id` as the key. If
-    /// a `commands.toml` file does not exist, it creates one
-    /// and adds an example command to demonstrate acceptable schema.
+    /// Recursively reads defined command files in config directory,
+    /// inserting them into the storage's array hash map, using its `id`
+    /// as the key. If there are no existing command files that match
+    /// `command.toml` file suffix, it will create an example command
+    /// file that demonstrates the acceptable schema.
     pub fn load(
         self: *Storage,
         io: std.Io,
         alloc: std.mem.Allocator,
         environ_map: *std.process.Environ.Map,
     ) !void {
-        const commands_path = try commandsPath(alloc, environ_map);
-        defer alloc.free(commands_path);
+        const config_parent_dir =
+            try file_load.defaultConfigHome(alloc, environ_map);
+        defer alloc.free(config_parent_dir);
+
+        var command_file_buf: std.ArrayList([]const u8) = .empty;
+        defer {
+            for (command_file_buf.items) |file_path| alloc.free(file_path);
+            command_file_buf.deinit(alloc);
+        }
+
+        try std.Io.Dir.cwd().createDirPath(io, config_parent_dir);
+
+        try findCommandFiles(
+            io,
+            alloc,
+            &command_file_buf,
+            config_parent_dir,
+        );
+
+        if (command_file_buf.items.len == 0) {
+            const example_file_path = try createExampleCommandFile(io, alloc, config_parent_dir);
+            //nothing previously found, add to buf to continue with parsing process
+            command_file_buf.append(alloc, example_file_path) catch |err| {
+                alloc.free(example_file_path);
+                return err;
+            };
+        }
 
         Logger.logAt(
             .info,
             .commands,
             @src(),
-            "commands path: {s}",
-            .{commands_path},
+            "total command files discovered: {}",
+            .{command_file_buf.items.len},
         );
-
-        const file = std.Io.Dir.cwd().openFile(io, commands_path, .{}) catch |err| switch (err) {
-            error.FileNotFound => blk: {
-                Logger.logAt(
-                    .info,
-                    .commands,
-                    @src(),
-                    "commands not found; creating default: {s}",
-                    .{commands_path},
-                );
-                const cwd = std.Io.Dir.cwd();
-
-                if (std.Io.Dir.path.dirname(commands_path)) |parent| {
-                    try cwd.createDirPath(io, parent);
-                }
-
-                const created = try cwd.createFile(io, commands_path, .{
-                    .read = true,
-                    .exclusive = true,
-                });
-                errdefer created.close(io);
-
-                var buffer: [4096]u8 = undefined;
-                var writer = created.writerStreaming(io, &buffer);
-
-                try writer.interface.writeAll(inputpkg.command_schema);
-                try writer.interface.flush();
-
-                break :blk created;
-            },
-            else => return err,
-        };
-        defer file.close(io);
 
         //begin parsing the TOML file
         //owns its own TOML parser. This is not needed anywhere else
@@ -85,105 +81,107 @@ pub const Storage = struct {
         parser.options.disallow_unknown_fields = true;
         defer parser.deinit();
 
-        var result = parser.parseFile(io, commands_path) catch |err| {
-            if (parser.error_info) |info| {
-                switch (info) {
-                    .parse => |position| {
-                        Logger.logAt(
-                            .err,
-                            .commands,
-                            @src(),
-                            "TOML parse failed: {s}, line {d}, position {d}",
-                            .{
-                                @errorName(err),
-                                position.line,
-                                position.pos,
-                            },
-                        );
-                    },
-                    .unknown_fields => |unknown| {
-                        for (unknown.keys) |key| {
+        for (command_file_buf.items) |file_path| {
+            var result = parser.parseFile(io, file_path) catch |err| {
+                if (parser.error_info) |info| {
+                    switch (info) {
+                        .parse => |position| {
                             Logger.logAt(
                                 .err,
                                 .commands,
                                 @src(),
-                                "Unknown TOML field: {s}",
-                                .{key},
+                                "TOML parse failed: {s}, line {d}, position {d}",
+                                .{
+                                    @errorName(err),
+                                    position.line,
+                                    position.pos,
+                                },
                             );
-                        }
-                    },
-                    else => {
-                        Logger.logAt(
-                            .err,
-                            .commands,
-                            @src(),
-                            "Failed to load commands: {s}",
-                            .{@errorName(err)},
-                        );
-                    },
+                        },
+                        .unknown_fields => |unknown| {
+                            for (unknown.keys) |key| {
+                                Logger.logAt(
+                                    .err,
+                                    .commands,
+                                    @src(),
+                                    "Unknown TOML field: {s}",
+                                    .{key},
+                                );
+                            }
+                        },
+                        else => {
+                            Logger.logAt(
+                                .err,
+                                .commands,
+                                @src(),
+                                "Failed to load commands: {s}",
+                                .{@errorName(err)},
+                            );
+                        },
+                    }
                 }
+                return err;
+            };
+            defer result.deinit();
+
+            const config = result.value;
+            const metadata = config.metadata;
+
+            Logger.logAt(
+                .info,
+                .commands,
+                @src(),
+                \\metadata:
+                \\  schema_version: {d}
+                \\  id: {s}
+                \\  name: {s}
+                \\  notes: {s}
+                ,
+                .{
+                    metadata.schema_version,
+                    metadata.id,
+                    metadata.name,
+                    metadata.notes,
+                },
+            );
+
+            for (metadata.category) |category| {
+                Logger.logAt(.info, .commands, @src(), "  category: {s}", .{category});
             }
-            return err;
-        };
-        defer result.deinit();
 
-        const config = result.value;
-        const metadata = config.metadata;
+            for (metadata.tags) |tag| {
+                Logger.logAt(.info, .commands, @src(), "  tag: {s}", .{tag});
+            }
 
-        Logger.logAt(
-            .info,
-            .commands,
-            @src(),
-            \\metadata:
-            \\  schema_version: {d}
-            \\  id: {s}
-            \\  name: {s}
-            \\  notes: {s}
-            ,
-            .{
-                metadata.schema_version,
-                metadata.id,
-                metadata.name,
-                metadata.notes,
-            },
-        );
+            for (metadata.aliases) |alias| {
+                Logger.logAt(.info, .commands, @src(), "  alias: {s}", .{alias});
+            }
 
-        for (metadata.category) |category| {
-            Logger.logAt(.info, .commands, @src(), "  category: {s}", .{category});
+            Logger.logAt(
+                .info,
+                .commands,
+                @src(),
+                \\action:
+                \\  context: {s}
+                \\  usage: {s}
+                ,
+                .{
+                    config.action.context,
+                    config.action.usage,
+                },
+            );
+
+            Logger.logAt(
+                .info,
+                .commands,
+                @src(),
+                "loaded commands",
+                .{}
+            );
+
+            const owned_command = try self.cloneCommand(config);
+            try self.commands.put(alloc, owned_command.metadata.id, owned_command);
         }
-
-        for (metadata.tags) |tag| {
-            Logger.logAt(.info, .commands, @src(), "  tag: {s}", .{tag});
-        }
-
-        for (metadata.aliases) |alias| {
-            Logger.logAt(.info, .commands, @src(), "  alias: {s}", .{alias});
-        }
-
-        Logger.logAt(
-            .info,
-            .commands,
-            @src(),
-            \\action:
-            \\  context: {s}
-            \\  usage: {s}
-            ,
-            .{
-                config.action.context,
-                config.action.usage,
-            },
-        );
-
-        Logger.logAt(
-            .info,
-            .commands,
-            @src(),
-            "loaded commands",
-            .{}
-        );
-
-        const owned_command = try self.cloneCommand(config);
-        try self.commands.put(alloc, owned_command.metadata.id, owned_command);
     }
 
     fn cloneCommand(self: *Storage, source: Command) !Command {
@@ -221,14 +219,65 @@ pub const Storage = struct {
     }
 };
 
-
-fn commandsPath(
+/// Fills in a given array list of the paths of user's command files
+fn findCommandFiles(
+    io: std.Io,
     alloc: std.mem.Allocator,
-    environ_map: *std.process.Environ.Map,
-) ![]const u8 {
-    const config_parent_dir = try file_load.defaultConfigHome(alloc, environ_map);
-    defer alloc.free(config_parent_dir);
+    buf: *std.ArrayList([]const u8),
+    commands_directory: []const u8,
+) !void {
+    //scan directory, mutate its buf
+    const command_files = try file_load.scanDirectory(
+        io,
+        alloc,
+        commands_directory,
+        "command.toml",
+    );
+    defer alloc.free(command_files);
 
-    return std.Io.Dir.path.join(alloc, &.{ config_parent_dir, "commands.toml" });
+    errdefer {
+        for (command_files) |file| alloc.free(file);
+    }
+
+    try buf.*.appendSlice(alloc, command_files);
 }
 
+/// Creates a file containing an example command schema.
+/// Returns the absolute path of the created file.
+fn createExampleCommandFile(
+    io: std.Io,
+    alloc: std.mem.Allocator,
+    parent_dir: []const u8,
+) ![]const u8 {
+    const example_command_path =
+        try std.Io.Dir.path.join(alloc, &.{ parent_dir, JJ_REBASE_COMMAND_FILE_NAME });
+    errdefer alloc.free(example_command_path);
+
+    Logger.logAt(
+        .info,
+        .commands,
+        @src(),
+        "commands not found; creating example: {s}",
+        .{example_command_path},
+    );
+
+    const cwd = std.Io.Dir.cwd();
+
+    // if (std.Io.Dir.path.dirname(example_command_path)) |parent| {
+    //     try cwd.createDirPath(io, parent);
+    // }
+
+    const created = try cwd.createFile(io, example_command_path, .{
+        .read = true,
+        .exclusive = true,
+    });
+    defer created.close(io);
+
+    var buffer: [4096]u8 = undefined;
+    var writer = created.writerStreaming(io, &buffer);
+
+    try writer.interface.writeAll(inputpkg.command_schema);
+    try writer.interface.flush();
+
+    return example_command_path;
+}
