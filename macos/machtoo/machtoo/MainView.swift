@@ -7,12 +7,23 @@
 
 import SwiftUI
 import AppKit
-import MachtooKit
 
 struct MainView: View {
+    let commands: [CommandViewModel]
+
     @State private var search = ""
     @FocusState private var isSearchFocused: Bool
-    @State private var result: Int32?
+
+    private var filteredCommands: [CommandViewModel] {
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return commands }
+
+        return commands.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || $0.description.localizedCaseInsensitiveContains(query)
+                || $0.id.localizedCaseInsensitiveContains(query)
+        }
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -22,22 +33,35 @@ struct MainView: View {
                 .font(.title3)
                 .background(.white.opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .onChange(of: search) { _, newValue in
-                    guard let number = Int32(newValue) else {
-                        result = nil
-                        return
+
+            if filteredCommands.isEmpty {
+                ContentUnavailableView(
+                    commands.isEmpty ? "No commands stored" : "No matching commands",
+                    systemImage: "terminal",
+                    description: Text(
+                        commands.isEmpty
+                            ? "Add a command file to your configuration directory."
+                            : "Try another search."
+                    )
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 16) {
+                        ForEach(filteredCommands) { command in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(command.name)
+                                    .font(.headline)
+                                Text(command.description)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    result = machtoo_add(number, 20)
+                    .padding(.vertical, 8)
                 }
-            
-            Spacer()
-            
-            if let result {
-                Text("Result: \(result)")
-                    .font(.title)
             }
-            
-            Spacer()
 
             // Temporary control to test normal application teardown.
             Button("Quit Machtoo") {
@@ -58,5 +82,11 @@ struct MainView: View {
 }
 
 #Preview {
-    MainView()
+    // MainView(commands: [
+    //     CommandViewModel(
+    //         id: "example.rebase",
+    //         name: "Rebase changes",
+    //         description: "Move changes onto a different revision."
+    //     )
+    // ])
 }

@@ -53,7 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showPanel() {
-        let content = MainView()
+        guard let core else { return }
+        let content = MainView(commands: core.getCommands())
 
         let panel = SearchPanel(
             contentRect: NSRect(

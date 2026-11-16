@@ -23,6 +23,41 @@ export fn machtoo_app_destroy(handle: ?*MachtooApp) void {
     api_app_ptr.destroy();
 }
 
+const ApiString = extern struct {
+    ptr: ?[*]const u8,
+    len: usize,
+};
+
+const ApiCommand = extern struct {
+    id: ApiString,
+    name: ApiString,
+    description: ApiString,
+};
+
+export fn machtoo_app_read_commands(
+    handle: ?*MachtooApp,
+    out_commands: ?[*]ApiCommand,
+    capacity: usize,
+) usize {
+    const public_handle = handle orelse return 0;
+    const api_app = alignHandle(public_handle);
+
+    const commands = api_app.app.state.commands.getCommands();
+
+    const output = out_commands orelse return commands.len;
+    const write_count = @min(capacity, commands.len);
+
+    for (commands[0..write_count], 0..) |command, i| {
+        output[i] = .{
+            .id = apiString(command.metadata.id),
+            .name = apiString(command.metadata.name),
+            .description = apiString(command.metadata.description),
+        };
+    }
+
+    return commands.len;
+}
+
 const std = @import("std");
 const ApiApp = @import("App.zig").ApiApp;
 const Logger = @import("Logger.zig");
@@ -42,3 +77,12 @@ const MachtooApp = opaque {};
 fn alignHandle(handle: *MachtooApp) *ApiApp {
     return @ptrCast(@alignCast(handle));
 }
+
+/// Converts Zig string slice into a valid C-compatible type
+fn apiString(value: []const u8) ApiString {
+    return .{
+        .ptr = if (value.len == 0) null else value.ptr,
+        .len = value.len,
+    };
+}
+

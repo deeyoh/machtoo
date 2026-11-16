@@ -184,6 +184,12 @@ pub const Storage = struct {
         }
     }
 
+    /// Borrowed view, valid until storage mutation or destruction.
+    /// The caller must not free it.
+    pub fn getCommands(self: *const Storage) []const Command {
+        return self.commands.values();
+    }
+
     fn cloneCommand(self: *Storage, source: Command) !Command {
         const alloc = self.arena.allocator();
 
