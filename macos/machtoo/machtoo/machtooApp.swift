@@ -28,13 +28,14 @@ final class SearchPanel: NSPanel {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: NSPanel?
     private var core: MachtooCore?
+    private var keyMonitor: Any?
 
     func applicationDidFinishLaunching(
         _ notification: Notification
     ) {
         do {
-            print("HERE")
             core = try MachtooCore()
+            installKeyMonitor()
             showPanel()
         } catch {
             let alert = NSAlert()
@@ -49,7 +50,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
+        removeKeyMonitor()
         core = nil
+    }
+
+    @MainActor
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+
+        keyMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.keyDown, .keyUp]
+        ) { [weak self] event in
+            // AppKit delivers local event-monitor callbacks on the main thread.
+            let handled = MainActor.assumeIsolated {
+                guard let self,
+                      let panel = self.panel,
+                      panel.isKeyWindow,
+                      event.window === panel,
+                      let core = self.core else {
+                    return false
+                }
+
+                // Let the native text editor finish an active IME/dead-key
+                // composition before offering shortcuts to the core.
+                if let editor = panel.firstResponder as? NSTextView,
+                   editor.hasMarkedText() {
+                    return false
+                }
+
+                return core.handleKeyEvent(event)
+            }
+            return handled ? nil : event
+        }
+    }
+
+    @MainActor
+    private func removeKeyMonitor() {
+        guard let keyMonitor else { return }
+        NSEvent.removeMonitor(keyMonitor)
+        self.keyMonitor = nil
     }
 
     func showPanel() {

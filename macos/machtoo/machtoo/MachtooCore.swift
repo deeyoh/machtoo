@@ -6,6 +6,7 @@
 //
 
 import MachtooKit
+import AppKit
 
 enum MachtooCoreError: Error {
     case appInitFailed
@@ -69,6 +70,54 @@ final class MachtooCore {
         }
 
         return commands
+    }
+
+    /// Normalizes native input for Zig. Physical-key translation and binding
+    /// lookup belong to the core; true means the native event was consumed.
+    @MainActor
+    func handleKeyEvent(_ event: NSEvent) -> Bool {
+        guard let handle else { return false }
+
+        let action: MachtooKeyActionVariant
+        switch event.type {
+        case .keyDown:
+            // The current C API has no repeat action. Leave repeats to native
+            // controls rather than executing a binding as another fresh press.
+            guard !event.isARepeat else { return false }
+            action = MACHTOO_KEY_PRESS
+        case .keyUp:
+            action = MACHTOO_KEY_RELEASE
+        default:
+            return false
+        }
+
+        let input = MachtooKeyEvent(
+            action: action,
+            native_keycode: UInt32(event.keyCode),
+            mods: Self.translateModifiers(event.modifierFlags)
+        )
+        let handled = machtoo_app_key_event(handle, input)
+        print("[Keyboard] type=\(event.type) keycode=\(input.native_keycode) mods=\(input.mods) handled=\(handled)")
+        return handled
+    }
+
+    private static func translateModifiers(
+        _ flags: NSEvent.ModifierFlags
+    ) -> UInt32 {
+        var mods: UInt32 = 0
+        if flags.contains(.shift) {
+            mods |= UInt32(MACHTOO_MOD_SHIFT)
+        }
+        if flags.contains(.control) {
+            mods |= UInt32(MACHTOO_MOD_CONTROL)
+        }
+        if flags.contains(.option) {
+            mods |= UInt32(MACHTOO_MOD_ALT)
+        }
+        if flags.contains(.command) {
+            mods |= UInt32(MACHTOO_MOD_SUPER)
+        }
+        return mods
     }
 
     private static func copyString(_ value: MachtooKit.ApiString) -> String {
