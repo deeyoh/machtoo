@@ -65,8 +65,8 @@ pub fn create(
 
 pub fn destroy(self: *App) void {
     self.state.commands.deinit(self.allocator);
+    self.state.config.deinit(self.allocator);
     self.allocator.destroy(self);
-    //@TODO: deinit commands
 }
 
 pub fn handleKeyEvent(self: *App, event: KeyEvent) bool {

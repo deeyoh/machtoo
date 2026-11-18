@@ -91,6 +91,10 @@ pub fn load(
     }
 }
 
+pub fn deinit(self: *Config, alloc: std.mem.Allocator) void {
+    self.bindings.deinit(alloc);
+}
+
 fn configPath(
     alloc: std.mem.Allocator,
     environ_map: *std.process.Environ.Map
