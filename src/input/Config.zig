@@ -5,6 +5,8 @@ const Logger = @import("../Logger.zig");
 const file_load = @import("file_load.zig");
 const inputpkg = @import("../inputpkg.zig");
 
+bindings: inputpkg.Binding.Tree = .{},
+
 pub fn load(
     self: *Config,
     io: std.Io,

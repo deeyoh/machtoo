@@ -58,9 +58,40 @@ export fn machtoo_app_read_commands(
     return commands.len;
 }
 
+const ApiKeyEvent = extern struct {
+    action: c_int,
+    native_keycode: u32,
+    mods: u32,
+};
+
+export fn machtoo_app_key_event(
+    handle: ?*MachtooApp,
+    event: ApiKeyEvent,
+) bool {
+    const public_handle = handle orelse return false;
+    const api_app = alignHandle(public_handle);
+
+    const action: inputpkg.key.ActionVariant = switch (event.action) {
+        0 => .release,
+        1 => .press,
+        else => return false,
+    };
+
+    const translated_event: inputpkg.KeyEvent = .{
+        .action = action,
+        .physical_key = inputpkg.keycodes_macos.translate(event.native_keycode),
+        .mods = .{
+            .bits = event.mods & inputpkg.key.Mods.mask,
+        },
+    };
+
+    return api_app.app.handleKeyEvent(translated_event);
+}
+
 const std = @import("std");
 const ApiApp = @import("App.zig").ApiApp;
 const Logger = @import("Logger.zig");
+const inputpkg = @import("inputpkg.zig");
 
 pub const std_options: std.Options = .{
     .logFn = @import("Logger.zig").logFn,

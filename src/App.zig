@@ -7,6 +7,7 @@ const inputpkg = @import("inputpkg.zig");
 
 const Config = inputpkg.Config;
 const commands = inputpkg.commands;
+const KeyEvent = inputpkg.KeyEvent;
 
 allocator: std.mem.Allocator,
 state: GlobalState,
@@ -14,6 +15,7 @@ state: GlobalState,
 pub const GlobalState = struct {
     config: inputpkg.Config,
     commands: commands.Storage,
+    key_handler: KeyEvent.Handler,
 };
 
 pub fn create(
@@ -35,9 +37,14 @@ pub fn create(
         .state = .{
             .config = config,
             .commands = commands.Storage.init(alloc),
+            .key_handler = undefined,
         },
     };
     errdefer app_ptr.state.commands.deinit(alloc);
+
+    app_ptr.state.key_handler = KeyEvent.Handler.init(
+        &app_ptr.state.config.bindings,
+    );
 
     try app_ptr.state.commands.load(
         io,
@@ -60,6 +67,24 @@ pub fn destroy(self: *App) void {
     self.state.commands.deinit(self.allocator);
     self.allocator.destroy(self);
     //@TODO: deinit commands
+}
+
+pub fn handleKeyEvent(self: *App, event: KeyEvent) bool {
+    switch (self.state.key_handler.feedKeyEvent(event)) {
+        .no_result => return false,
+        .pending => return true,
+        .action => |action| {
+            //@TODO: dispatch action
+            Logger.logAt(
+                .info,
+                .app,
+                @src(),
+                "matching action found: {}",
+                .{action},
+            );
+            return true;
+        },
+    }
 }
 
 /// Wrapper struct of `App` for C API. Bootstraps a safe allocator backed
