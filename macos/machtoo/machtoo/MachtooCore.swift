@@ -76,11 +76,16 @@ final class MachtooCore {
     /// lookup belong to the core; true means the native event was consumed.
     @MainActor
     func handleKeyEvent(_ event: NSEvent) -> Bool {
-        guard let handle else { return false }
+        NSLog("[Keyboard] Entered MachtooCore.handleKeyEvent")
+        guard let handle else {
+            NSLog("[Keyboard] Skipped: core handle is nil")
+            return false
+        }
 
         let action: MachtooKeyActionVariant
         switch event.type {
         case .keyDown:
+            NSLog("[Keyboard] Decoding keyDown, repeat=\(event.isARepeat)")
             // The current C API has no repeat action. Leave repeats to native
             // controls rather than executing a binding as another fresh press.
             guard !event.isARepeat else { return false }
@@ -91,13 +96,17 @@ final class MachtooCore {
             return false
         }
 
+        NSLog("[Keyboard] Action decoded; translating modifiers")
+        let mods = Self.translateModifiers(event.modifierFlags)
+        NSLog("[Keyboard] Modifiers translated: \(mods); constructing C event")
         let input = MachtooKeyEvent(
             action: action,
             native_keycode: UInt32(event.keyCode),
-            mods: Self.translateModifiers(event.modifierFlags)
+            mods: mods
         )
+        NSLog("[Keyboard] Calling Zig: type=\(event.type.rawValue) keycode=\(input.native_keycode) mods=\(input.mods)")
         let handled = machtoo_app_key_event(handle, input)
-        print("[Keyboard] type=\(event.type) keycode=\(input.native_keycode) mods=\(input.mods) handled=\(handled)")
+        NSLog("[Keyboard] Zig returned handled=\(handled)")
         return handled
     }
 

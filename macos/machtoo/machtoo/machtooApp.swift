@@ -58,16 +58,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
 
+        NSLog("[Keyboard] Installing local key monitor")
         keyMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.keyDown, .keyUp]
         ) { [weak self] event in
+            // Log before isolation/focus checks so a skipped event is visible.
+            // Only key metadata is logged, never the user's typed text.
+            NSLog("[Keyboard] Monitor received type=\(event.type.rawValue) keycode=\(event.keyCode) mainThread=\(Thread.isMainThread)")
             // AppKit delivers local event-monitor callbacks on the main thread.
             let handled = MainActor.assumeIsolated {
-                guard let self,
-                      let panel = self.panel,
-                      panel.isKeyWindow,
-                      event.window === panel,
-                      let core = self.core else {
+                guard let self, let panel = self.panel else {
+                    NSLog("[Keyboard] Skipped: no panel")
+                    return false
+                }
+                guard panel.isKeyWindow, event.window === panel else {
+                    NSLog("[Keyboard] Skipped: panelIsKey=\(panel.isKeyWindow) eventMatchesPanel=\(event.window === panel)")
+                    return false
+                }
+                guard let core = self.core else {
+                    NSLog("[Keyboard] Skipped: no core")
                     return false
                 }
 
@@ -75,9 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // composition before offering shortcuts to the core.
                 if let editor = panel.firstResponder as? NSTextView,
                    editor.hasMarkedText() {
+                    NSLog("[Keyboard] Skipped: text composition active")
                     return false
                 }
 
+                NSLog("[Keyboard] Forwarding to MachtooCore")
                 return core.handleKeyEvent(event)
             }
             return handled ? nil : event

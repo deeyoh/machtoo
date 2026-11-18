@@ -66,3 +66,16 @@ pub fn scanDirectory(
 
     return try matched_files.toOwnedSlice(alloc);
 }
+
+pub const LineIterator = struct {
+    lines: std.mem.SplitIterator(u8, .scalar),
+
+     pub fn init(file_content: []const u8) LineIterator {
+         const lines = std.mem.splitScalar(u8, file_content, '\n');
+         return .{ .lines = lines };
+     }
+
+    pub fn next(self: *LineIterator) ?[]const u8 {
+        return self.lines.next();
+    }
+};

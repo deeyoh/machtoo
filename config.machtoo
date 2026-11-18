@@ -1,1 +1,2 @@
-keybind = annotate=shift+a
+keybind = escape=hide_panel
+keybind = super+slash=show_panel

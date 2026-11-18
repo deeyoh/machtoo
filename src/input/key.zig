@@ -54,7 +54,7 @@ pub const Mods = struct {
 
     pub const mask: u32 = shift | control | alt | super;
 
-    pub fn containers(self: Mods, modifier: u32) bool {
+    pub fn contains(self: Mods, modifier: u32) bool {
         return self.bits & modifier != 0;
     }
 };
