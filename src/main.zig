@@ -5,7 +5,8 @@ const Logger = @import("Logger.zig");
 const inputpkg = @import("inputpkg.zig");
 const gtk = @import("gtk");
 const gio = @import("gio");
-const gdk  =@import("gdk");
+const gdk = @import("gdk");
+const GTKActionHandler = @import("gtkui/uipkg.zig").GTKActionHandler;
 
 //ui specific
 const uipkg = @import("gtkui/uipkg.zig");
@@ -19,6 +20,8 @@ pub const std_options: std.Options = .{
 const MachtooGTKCtx = struct {
     app: *App,
     commands_vm: uipkg.CommandsView.Model,
+    // Initialized in activate before registration in app; lives throughout GTK's run loop.
+    action_handler: GTKActionHandler = undefined,
 };
 
 pub fn main(init: std.process.Init) !void {
@@ -90,6 +93,9 @@ fn activate(app: *gtk.Application, context: *MachtooGTKCtx) callconv(.c) void {
 
     commands_view_widget.setVexpand(1);
     content.append(commands_view_widget);
+
+    context.action_handler = GTKActionHandler.init(window);
+    context.action_handler.register(context.app);
 
     window.setChild(content.as(gtk.Widget));
     window.present();

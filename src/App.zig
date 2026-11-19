@@ -4,6 +4,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Logger = @import("Logger.zig");
 const inputpkg = @import("inputpkg.zig");
+const ActionHandler = @import("corepkg.zig").Action.Handler;
 
 const Config = inputpkg.Config;
 const commands = inputpkg.commands;
@@ -16,6 +17,9 @@ pub const GlobalState = struct {
     config: inputpkg.Config,
     commands: commands.Storage,
     key_handler: KeyEvent.Handler,
+
+    //set within each respective UI via handler register
+    action_handler: ?ActionHandler = null,
 };
 
 pub fn create(
@@ -82,7 +86,33 @@ pub fn handleKeyEvent(self: *App, event: KeyEvent) bool {
                 "matching action found: {}",
                 .{action},
             );
+
+            //@NOTE: Maybe change to return an error
+            const action_handler = self.*.state.action_handler orelse 
+                return false;
+
+            switch (action.value) {
+                .hide_panel => action_handler.hideMainWindow(),
+                .show_panel => action_handler.showMainWndow(),
+            }
             return true;
+
+            // @NOTE: Use `ActionHandler` interface.
+            // switch (builtin.os.tag) {
+            //     .macos => {
+            //         //@TODO: Call API Swift callback to tell Swift to execute its
+            //         //UI specific action for particular surface
+            //     },
+            //     .linux => {
+            //         const uipkg = @import("gtkui/uipkg.zig").actions;
+            //         _ = uipkg;
+            //         //@TODO: Call GTK's action handler
+            //         //
+            //         // Given some action, we want to execute it within the UI
+            //     },
+            //     else => @compileError("Unsupported OS selection for key event handler"),
+            // }
+            // return true;
         },
     }
 }

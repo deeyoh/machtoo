@@ -48,3 +48,17 @@ pub fn parse(action_text: []const u8) !Action {
         },
     }
 }
+
+pub const Handler = struct {
+    ptr: *const anyopaque,
+    hideMainWindowFn: *const fn (ptr: *const anyopaque) callconv(.c) void,
+    showMainWindowFn: *const fn (ptr: *const anyopaque) callconv(.c) void,
+
+    pub fn hideMainWindow(self: Handler)  void {
+        return self.hideMainWindowFn(self.ptr);
+    }
+
+    pub fn showMainWndow(self: Handler) void {
+        return self.showMainWindowFn(self.ptr);
+    }
+};
