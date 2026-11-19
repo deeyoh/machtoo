@@ -22,15 +22,17 @@ struct MachtooApp: App {
 
 final class MachtooAppDelegate: NSObject, NSApplicationDelegate {
     private var apiCore: MachtooApiCore?
-    private var commandsManager: CommandsManager?
     private var panel: NSPanel?
+    
+    private var commandsManager: CommandsManager?
+    private var keyEventListener: KeyEventListener?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         do {
             self.apiCore = try MachtooApiCore()
             guard let core = self.apiCore else { return }
             
-            self.commandsManager = CommandsManager(handle: core.handle)
+            self.commandsManager = CommandsManager(appHandle: core.handle)
             guard let commandsManager = self.commandsManager else { return }
             
             let panel = createBasePanel()
@@ -40,6 +42,12 @@ final class MachtooAppDelegate: NSObject, NSApplicationDelegate {
             
             self.panel = panel
             panel.makeKeyAndOrderFront(nil)
+            
+            self.keyEventListener = KeyEventListener(appHandle: core.handle)
+            guard let keyEventListener = self.keyEventListener else { return }
+            
+            keyEventListener.installKeyMonitor(on: panel)
+            
         } catch {
             let alert = NSAlert()
             alert.messageText = "Unable to start Machtoo"

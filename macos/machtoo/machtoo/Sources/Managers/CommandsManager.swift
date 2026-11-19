@@ -9,19 +9,19 @@ import Foundation
 import MachtooKit
 
 @MainActor
-final class CommandsManager {
-    private let app_handle: OpaquePointer
+final class CommandsManager: CoreApiManaging {
+    let appHandle: OpaquePointer
     
-    init(handle: OpaquePointer) {
-        self.app_handle = handle
+    required init(appHandle: OpaquePointer) {
+        self.appHandle = appHandle
     }
     
     func getCommands() -> [Command] {
-        let capacity = machtoo_app_read_commands(self.app_handle, nil, 0)
+        let capacity = machtoo_app_read_commands(self.appHandle, nil, 0)
         let buffer = UnsafeMutablePointer<ApiCommand>.allocate(capacity: capacity)
         defer { buffer.deallocate() }
         
-        let total = machtoo_app_read_commands(self.app_handle, buffer, capacity)
+        let total = machtoo_app_read_commands(self.appHandle, buffer, capacity)
         precondition(total == capacity, "Command storage changed during a read")
         
         var commands: [Command] = []
