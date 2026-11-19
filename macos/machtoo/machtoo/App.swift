@@ -61,6 +61,10 @@ final class MachtooAppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
+        self.keyEventListener?.removeKeyMonitor()
+        
+        self.keyEventListener = nil
+        self.commandsManager = nil
         self.apiCore = nil
     }
     
