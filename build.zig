@@ -67,6 +67,7 @@ pub fn build(b: *std.Build) void {
             if (b.lazyDependency("zig_gobject", .{})) |gobject_dep| {
                 exe.root_module.addImport("gtk", gobject_dep.module("gtk4"));
                 exe.root_module.addImport("gio", gobject_dep.module("gio2"));
+                exe.root_module.addImport("gdk", gobject_dep.module("gdk4"));
             }
         },
         .none => {
