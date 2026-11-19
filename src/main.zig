@@ -7,6 +7,10 @@ const gtk = @import("gtk");
 const gio = @import("gio");
 const gdk  =@import("gdk");
 
+//ui specific
+const uipkg = @import("gtkui/uipkg.zig");
+
+
 pub const std_options: std.Options = .{
     .logFn = @import("Logger.zig").logFn,
     .log_level = .debug,
@@ -14,6 +18,7 @@ pub const std_options: std.Options = .{
 
 const MachtooGTKCtx = struct {
     app: *App,
+    commands_vm: uipkg.CommandsView.Model,
 };
 
 pub fn main(init: std.process.Init) !void {
@@ -28,7 +33,10 @@ pub fn main(init: std.process.Init) !void {
     defer gtk_app.unref();
 
     var context: MachtooGTKCtx = .{
-        .app = app_ptr
+        .app = app_ptr,
+        .commands_vm = .{
+            .storage = &app_ptr.state.commands,
+        },
     };
 
     _ = gio.Application.signals.activate.connect(
@@ -62,9 +70,30 @@ fn activate(app: *gtk.Application, context: *MachtooGTKCtx) callconv(.c) void {
     window.setTitle("Machtoo");
     window.setDefaultSize(800, 600);
 
-    const label_ptr = gtk.Label.new("Hello from Zig GTK!");
-    window.setChild(label_ptr.as(gtk.Widget));
+    const commands_view_widget = uipkg.CommandsView.create(
+        context.app.allocator,
+        &context.commands_vm,
+    ) catch |err| {
+        Logger.logAt(
+            .err,
+            .app,
+            @src(),
+            "failed to create commands view: {}",
+            .{err},
+        );
+        return;
+    };
+
+    const content = gtk.Box.new(.vertical, 8);
+    const search = gtk.SearchEntry.new();
+    content.append(search.as(gtk.Widget));
+
+    commands_view_widget.setVexpand(1);
+    content.append(commands_view_widget);
+
+    window.setChild(content.as(gtk.Widget));
     window.present();
+    _ = search.as(gtk.Widget).grabFocus();
 }
 
 fn onKeyPressed(
@@ -96,6 +125,8 @@ fn onKeyPressed(
     );
 
     var mods: inputpkg.key.Mods = .{};
+
+    //@TODO: ADD THE REMAINING MODIFIERS
     if (state.super_mask) mods.bits |= inputpkg.key.Mods.super;
 
     const event: inputpkg.KeyEvent = .{
