@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "nix/**"
+      - "flake.*"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "nix/**"
+      - "flake.*"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gtk-build:
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    name: Build package ${{ matrix.system }}
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/magic-nix-cache-action@12fb09b6126680552ebf1918102d65d832554057 #v.0.1.6
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+
+      - name: Build package
+        run: nix build --print-build-logs .#packages.${{ matrix.system }}.machtoo
