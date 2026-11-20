@@ -93,10 +93,7 @@
             version = "0.1.0";
             src = pkgs.lib.cleanSource ./.;
 
-            nativeBuildInputs = gtkSetup.nativeBuildInputs ++ [
-              pkgs.autoPatchelfHook
-              pkgs.wrapGAppsHook4
-            ];
+            nativeBuildInputs = gtkSetup.nativeBuildInputs;
 
             inherit (gtkSetup) buildInputs;
             preBuild = gtkSetup.setup + ''
