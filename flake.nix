@@ -25,9 +25,10 @@
         overlays = [ zig.overlays.default ];
       })
     );
-  in
-  {
-    devShells = forAllPlatforms (pkgs: let
+
+    mkGtkSetup = pkgs:
+      let
+        isLinux = pkgs.stdenv.hostPlatform.isLinux;
         patchedPkgConfig = pkgs.runCommandLocal "patched-pkg-config" {} ''
           mkdir -p "$out"
 
@@ -41,15 +42,30 @@
             --replace-quiet '-Wl,-export-dynamic' ""
         '';
       in {
-      default = pkgs.mkShell {
-        nativeBuildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux (
-          with pkgs; [
+        nativeBuildInputs = pkgs.lib.optionals isLinux ( with pkgs; [
             pkg-config
             libxslt
             gobject-introspection
           ]
         );
 
+        buildInputs = pkgs.lib.optionals isLinux [ pkgs.gtk4 ];
+
+        setup = pkgs.lib.optionalString isLinux ''
+          # Search modified PC files before the originals.
+          export PKG_CONFIG_PATH="${patchedPkgConfig}:''${PKG_CONFIG_PATH:-}"
+        '';
+        runSetup = pkgs.lib.optionalString isLinux ''
+          # Run with the loader matching this shell's GTK dependencies.
+          export MACHTOO_DYNAMIC_LINKER="${pkgs.stdenv.cc.bintools.dynamicLinker}"
+        '';
+      };
+  in
+  {
+    devShells = forAllPlatforms (pkgs: let
+        gtkSetup = mkGtkSetup pkgs;
+      in {
+      default = pkgs.mkShell {
         packages = with pkgs; [
           git
 
@@ -60,16 +76,9 @@
           clang-tools
           zls
           zigpkgs."0.17.0"
-        ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-          gtk4
         ];
 
-        shellHook = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
-          # Search modified PC files before the originals.
-          export PKG_CONFIG_PATH="${patchedPkgConfig}:''${PKG_CONFIG_PATH:-}"
-          # Run with the loader matching this shell's GTK dependencies.
-          export MACHTOO_DYNAMIC_LINKER="${pkgs.stdenv.cc.bintools.dynamicLinker}"
-        '';
+        shellHook = gtkSetup.setup + gtkSetup.runSetup;
       };
     });
   };
