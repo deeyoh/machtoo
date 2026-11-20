@@ -10,9 +10,11 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
+
+    zig2nix.url = "github:Cloudef/zig2nix";
   };
 
-  outputs = { self, nixpkgs, zig, ... }:
+  outputs = { self, nixpkgs, zig, zig2nix, ... }:
   let
     platforms = [
       "x86_64-linux"
@@ -62,10 +64,66 @@
       };
   in
   {
+    packages = forAllPlatforms(pkgs:
+      pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux (
+        let
+          gtkSetup = mkGtkSetup pkgs;
+          env = zig2nix.outputs.zig-env.${pkgs.stdenv.hostPlatform.system} {
+            inherit nixpkgs;
+            zig = zig2nix.packages.${pkgs.stdenv.hostPlatform.system}."zig-0_17_0";
+          };
+
+          gobjectSource = pkgs.fetchFromGitHub {
+            owner = "ianprime0509";
+            repo = "zig-gobject";
+            rev = "90a738ce69a0f9533568077c8a7831628f20fa83";
+            hash = "sha256-5svWKFn2ttsMRJaxMsmp/KLwdeATDSgqv1ToCJxPo3Y=";
+          };
+
+          gobjectDeps = env.deriveLockFile ./nix/gobject-generator.zon2json-lock
+          {
+            name = "gobject-generator-dependencies";
+          };
+        in
+        {
+          machtoo = env.package {
+            pname = "machtoo-gtk";
+            version = "0.1.0";
+            src = pkgs.lib.cleanSource ./.;
+
+            nativeBuildInputs = gtkSetup.nativeBuildInputs;
+
+            inherit (gtkSetup) buildInputs;
+            preBuild = gtkSetup.setup + ''
+              (
+                export MACHTOO_GOBJECT_SOURCE="${gobjectSource}"
+
+                # Keep the generator's cache separate from Machtoo's cache.
+                export ZIG_GLOBAL_CACHE_DIR="$(mktemp -d)"
+                ln -s "${gobjectDeps}" "$ZIG_GLOBAL_CACHE_DIR/p"
+
+                bash scripts/generate-gtk.sh
+              )
+            '';
+
+            zigBuildFlags = [
+              "-Dapprt=gtk"
+              "-Doptimize=ReleaseFast"
+            ];
+
+            zigTarget = "${pkgs.stdenv.hostPlatform.parsed.cpu.name}-linux-gnu.${pkgs.glibc.version}";
+            zigPreferMusl = false;
+            meta.mainProgram = "machtoo";
+          };
+        }
+      )
+    );
+
     devShells = forAllPlatforms (pkgs: let
         gtkSetup = mkGtkSetup pkgs;
       in {
       default = pkgs.mkShell {
+        inherit (gtkSetup) nativeBuildInputs buildInputs;
         packages = with pkgs; [
           git
 

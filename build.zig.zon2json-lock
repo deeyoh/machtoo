@@ -1,0 +1,12 @@
+{
+  "toml-0.3.0-bV14BRmkAQDSILPPyXc31aAXPtJa1Uh8Frug3i6InAUc": {
+    "name": "toml",
+    "url": "git+https://github.com/sam701/zig-toml?ref=zig-0.17#4a13e49ce7d19ac2df8b87962d9f23c0f5dd5bdd",
+    "hash": "sha256-5+5sQ+uNizuVSQXbH8V5XxpAqjABVYaswDfBSqyaNJQ="
+  },
+  "zig-0.0.0-Fp4XJLTbSg6p3al3MOf-zVtw8ySK9N9I5iKj83e5U9QM": {
+    "name": "zig_autodoc",
+    "url": "git+https://github.com/ianprime0509/zig?ref=zig-gobject-0.17.0#d8e798e9a83e558076ea6a04e1e4000c731b9c5c",
+    "hash": "sha256-Sn1hmKZb4XX0Egi89zIHZNMWvFXDYBY6GEE634ifWwk="
+  }
+}

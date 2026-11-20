@@ -6,7 +6,12 @@ set -euo pipefail
 project="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 commit=90a738ce69a0f9533568077c8a7831628f20fa83
 
-for tool in git zig pkg-config xsltproc; do
+tools=(zig pkg-config xsltproc)
+if [[ -z "${MACHTOO_GOBJECT_SOURCE:-}" ]]; then
+  tools+=(git)
+fi
+
+for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     printf 'Missing tool: %s. Run inside the configured Nix dev shell.\n' "$tool" >&2
     exit 1
@@ -22,8 +27,13 @@ fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-git clone https://github.com/ianprime0509/zig-gobject.git "$work/generator"
-git -C "$work/generator" checkout --detach "$commit"
+if [[ -n "${MACHTOO_GOBJECT_SOURCE:-}" ]]; then
+  cp -R "$MACHTOO_GOBJECT_SOURCE" "$work/generator"
+  chmod -R u+w "$work/generator"
+else
+  git clone https://github.com/ianprime0509/zig-gobject.git "$work/generator"
+  git -C "$work/generator" checkout --detach "$commit"
+fi
 
 # Nix distributes GIR files across multiple package directories.
 args=("-Dgir-files-path=$gir_dir")
