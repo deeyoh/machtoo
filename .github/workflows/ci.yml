@@ -39,10 +39,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: DeterminateSystems/magic-nix-cache-action@12fb09b6126680552ebf1918102d65d832554057 #v.0.1.6
-
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+
+      - name: Cache Nix builds
+        uses: DeterminateSystems/magic-nix-cache-action@84c0677f58dcedf3b91f8223ce36a9ea5b3c84b7 # v15
+        with:
+          use-flakehub: false
 
       - name: Build package
         run: nix build --print-build-logs .#packages.${{ matrix.system }}.machtoo
