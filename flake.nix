@@ -97,6 +97,8 @@
 
             inherit (gtkSetup) buildInputs;
             preBuild = gtkSetup.setup + ''
+              rm -rf vendor/zig-gobject
+
               (
                 export MACHTOO_GOBJECT_SOURCE="${gobjectSource}"
 
