@@ -113,9 +113,35 @@
               "-Doptimize=ReleaseFast"
             ];
 
+            # @NOTE: zig2nix does not have automatic interpreter selection
+            # when specifying non-default zigTarget. So even with this
+            # zigTarget line, the nix package would still select the baseline
+            # version of glibc.
+            #
+            # It should be noted that while zigWrapperLibs option is able
+            # to provide a dynamic linker on build, not explicitly setting
+            # zigTarget causes a build crash within Zig.
             zigTarget = "${pkgs.stdenv.hostPlatform.parsed.cpu.name}-linux-gnu.${pkgs.glibc.version}";
             zigPreferMusl = false;
+
+            # @NOTE: pkgs.glib not necessary in dev environment since nix deps
+            # propogate GLib's development files (allows linker to find GIO).
+            # When packaging with zig2nix, it wrapperLibs constructs
+            # LD_LIBRARY_PATH from exactly its given list and does not
+            # recursively include GTK's dependencies.
+            zigWrapperLibs = gtkSetup.buildInputs ++ [ pkgs.glib ];
             meta.mainProgram = "machtoo";
+
+            # zigTarget sets the glibc compatibility version but still
+            # need to set the rpath for glibc and set the interpreter to
+            # use glibc 2.44 loader. Explicitly select the correct linker
+            # and set the glibc version for wrapped executable
+            postFixup = ''
+              ${pkgs.patchelf}/bin/patchelf \
+                --set-interpreter "${pkgs.stdenv.cc.bintools.dynamicLinker}" \
+                --add-rpath "${pkgs.lib.getLib pkgs.glibc}/lib" \
+                "$out/bin/.machtoo-wrapped"
+            '';
           };
         }
       )

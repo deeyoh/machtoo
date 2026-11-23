@@ -38,7 +38,10 @@ pub fn build(b: *std.Build) void {
                     .root_source_file = b.path("src/main.zig"),
                     .target = config.target,
                     .optimize = config.optimize,
+                    .link_libc = true
                 }),
+                .use_llvm = true,
+                .use_lld = true,
             });
 
             AddSharedCore.init(b, .{
