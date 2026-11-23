@@ -137,7 +137,7 @@
             # use glibc 2.44 loader. Explicitly select the correct linker
             # and set the glibc version for wrapped executable
             postFixup = ''
-              ${pkgs.patchelf}/bin/patchelf \
+              ${pkgs.patchelf}/bin/patchelf --no-sort \
                 --set-interpreter "${pkgs.stdenv.cc.bintools.dynamicLinker}" \
                 --add-rpath "${pkgs.lib.getLib pkgs.glibc}/lib" \
                 "$out/bin/.machtoo-wrapped"
