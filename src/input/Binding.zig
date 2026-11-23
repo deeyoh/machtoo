@@ -113,8 +113,22 @@ pub const Tree = struct {
         while (steps.next()) |step| {
             const trigger = try Trigger.parse(step);
             try sequence.append(alloc, trigger);
+            Logger.logAt(
+                .debug,
+                .config,
+                @src(),
+                "trigger sequence step appended: {s}",
+                .{step},
+            );
         }
 
+        Logger.logAt(
+            .debug,
+            .config,
+            @src(),
+            "full trigger sequence: {any}",
+            .{sequence.items},
+        );
         return try sequence.toOwnedSlice(alloc);
     }
 

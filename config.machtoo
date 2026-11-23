@@ -1,2 +1,3 @@
 keybind = escape=hide_panel
 keybind = super+slash=show_panel
+keybind = ctrl+s>a=show_create_command_form

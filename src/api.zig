@@ -79,7 +79,7 @@ export fn machtoo_app_key_event(
 
     const translated_event: inputpkg.KeyEvent = .{
         .action = action,
-        .physical_key = inputpkg.keycodes_macos.translate(event.native_keycode),
+        .physical_key = inputpkg.keycodes.translate(event.native_keycode),
         .mods = .{
             .bits = event.mods & inputpkg.key.Mods.mask,
         },

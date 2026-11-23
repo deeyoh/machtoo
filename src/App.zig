@@ -94,6 +94,7 @@ pub fn handleKeyEvent(self: *App, event: KeyEvent) bool {
             switch (action.value) {
                 .hide_panel => action_handler.hideMainWindow(),
                 .show_panel => action_handler.showMainWndow(),
+                .show_create_command_form => {}
             }
             return true;
 

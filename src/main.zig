@@ -134,6 +134,7 @@ fn onKeyPressed(
 
     //@TODO: ADD THE REMAINING MODIFIERS
     if (state.super_mask) mods.bits |= inputpkg.key.Mods.super;
+    if (state.control_mask) mods.bits |= inputpkg.key.Mods.control;
 
     const event: inputpkg.KeyEvent = .{
         .action = .press,

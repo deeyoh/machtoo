@@ -7,6 +7,7 @@ value: Value,
 pub const Value = union(enum) {
     hide_panel: void,
     show_panel: void,
+    show_create_command_form: void
 };
 
 pub fn parse(action_text: []const u8) !Action {
@@ -34,7 +35,7 @@ pub fn parse(action_text: []const u8) !Action {
     ) orelse return error.UnknownAction;
 
     switch (tag) {
-        .hide_panel, .show_panel => {
+        .hide_panel, .show_panel, .show_create_command_form => {
             if (payload != null) {
                 return error.UnexpectedActionPayload;
             }
@@ -43,6 +44,7 @@ pub fn parse(action_text: []const u8) !Action {
                 .value = switch (tag) {
                     .hide_panel => .hide_panel,
                     .show_panel => .show_panel,
+                    .show_create_command_form => .show_create_command_form
                 },
             };
         },
